@@ -1,0 +1,12 @@
+[
+  {"name": "Mads Villadsen", "club": "FC Nordhavn", "previousClub": "Aarhus Rovers", "position": "Midfielder", "text": "Creative playmaker with excellent vision and precise through passes."},
+  {"name": "Luca Ferrante", "club": "FC Nordhavn", "previousClub": "Torino Azzurri", "position": "Striker", "text": "Clinical finisher, strong in the air, scores most goals from crosses."},
+  {"name": "Jonas Krogh", "club": "Aarhus Rovers", "previousClub": "Odense United", "position": "Defender", "text": "Tall and physical centre back, dominant in duels and set pieces."},
+  {"name": "Rafael Duarte", "club": "Torino Azzurri", "previousClub": "Aarhus Rovers", "position": "Midfielder", "text": "Technical dribbler who creates chances with quick feints and clever passing."},
+  {"name": "Emil Brandt", "club": "Odense United", "previousClub": "FC Nordhavn", "position": "Goalkeeper", "text": "Reliable shot stopper, good at distribution with long accurate throws."},
+  {"name": "Oskar Lind", "club": "Aarhus Rovers", "previousClub": "Odense United", "position": "Winger", "text": "Fast winger who beats defenders on the outside and delivers dangerous crosses."},
+  {"name": "Tomas Reyes", "club": "Odense United", "previousClub": "Torino Azzurri", "position": "Midfielder", "text": "Hard-working defensive midfielder who wins the ball back and breaks up play."},
+  {"name": "Nikolaj Sand", "club": "Torino Azzurri", "previousClub": "FC Nordhavn", "position": "Striker", "text": "Pacey forward who runs in behind the defence and finishes with calm one-on-ones."},
+  {"name": "Viktor Hald", "club": "FC Nordhavn", "previousClub": "Odense United", "position": "Defender", "text": "Ball-playing full back who overlaps constantly and delivers accurate crosses."},
+  {"name": "Marco Bellini", "club": "Aarhus Rovers", "previousClub": "Torino Azzurri", "position": "Midfielder", "text": "Deep-lying playmaker who controls tempo and switches play with long diagonal passes."}
+]

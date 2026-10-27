@@ -1,0 +1,213 @@
+{
+  "name": "Agent - Football Analyst",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "when-chat-message-received",
+      "name": "When chat message received",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "auto",
+        "text": "={{ $json.chatInput }}",
+        "options": {
+          "systemMessage": "You are a football analyst. You answer questions about players, their playing style and their club connections, using ONLY data from the Neo4j knowledge base that you reach through your tools.\n\nTOOLS\n- vector_search: find players from a free-text description of playing style (semantic search).\n- graph_lookup: find players connected to a NAMED player through current or previous clubs (graph traversal).\n- hybrid_search: use when the question combines a playing style AND connections (vector search + graph expansion in one query).\n\nRULES\n1. Always call at least one tool before answering. Never answer from your own knowledge or about real-world players.\n2. For a style question use vector_search. For a named player use graph_lookup. For both use hybrid_search. If unsure, try hybrid_search first.\n3. Use exact player names from tool results when calling graph_lookup. Do not guess names.\n4. If the tools return nothing relevant, say so honestly. Do not invent facts.\n5. Always end with a \"Sources\" section: player names, document name, and the relations used (PLAYS_FOR / PREVIOUSLY_PLAYED_FOR) and similarity scores when available.\n6. Keep answers short. Reply in the same language as the user.\n7. If the question is not about football players in the database, say you cannot help with that.\n"
+        }
+      },
+      "id": "football-analyst",
+      "name": "Football Analyst",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        300,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "model": "llama3.1",
+        "options": {
+          "temperature": 0
+        }
+      },
+      "id": "ollama-chat-model",
+      "name": "Ollama Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        200,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "contextWindowLength": 5
+      },
+      "id": "memory",
+      "name": "Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        360,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "name": "vector_search",
+        "description": "Finds players from a description of playing style, e.g. 'creative playmaker'. Input: query (natural language, preferably English). Use when the user describes a type of player without naming one. Returns player text, source document and similarity score.",
+        "workflowId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "",
+          "cachedResultName": "SELECT AFTER IMPORT"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "query": "={{ $fromAI('query') }}"
+          }
+        }
+      },
+      "id": "vector_search",
+      "name": "vector_search",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2,
+      "position": [
+        520,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "name": "graph_lookup",
+        "description": "Finds players connected to a named player via clubs (current or previous). Input: playerName (exact full name). Use for questions about teammates, clubs or connections of a known player. Returns connected players, clubs and relation types.",
+        "workflowId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "",
+          "cachedResultName": "SELECT AFTER IMPORT"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "playerName": "={{ $fromAI('playerName') }}"
+          }
+        }
+      },
+      "id": "graph_lookup",
+      "name": "graph_lookup",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2,
+      "position": [
+        680,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "name": "hybrid_search",
+        "description": "Combines semantic search and club connections in one Neo4j query. Input: query (natural language, preferably English). Use when the question describes a player type AND asks about connections. Returns matching players with description, source, score and connected players.",
+        "workflowId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "",
+          "cachedResultName": "SELECT AFTER IMPORT"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "query": "={{ $fromAI('query') }}"
+          }
+        }
+      },
+      "id": "hybrid_search",
+      "name": "hybrid_search",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2,
+      "position": [
+        840,
+        260
+      ]
+    }
+  ],
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "Football Analyst",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Football Analyst",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Football Analyst",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "vector_search": {
+      "ai_tool": [
+        [
+          {
+            "node": "Football Analyst",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "graph_lookup": {
+      "ai_tool": [
+        [
+          {
+            "node": "Football Analyst",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "hybrid_search": {
+      "ai_tool": [
+        [
+          {
+            "node": "Football Analyst",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

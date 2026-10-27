@@ -1,0 +1,17 @@
+services:
+  neo4j:
+    image: neo4j:5.26
+    ports: ["7474:7474", "7687:7687"]
+    environment:
+      NEO4J_AUTH: neo4j/password123
+    volumes: [neo4j_data:/data]
+  n8n:
+    image: n8nio/n8n:latest
+    ports: ["5678:5678"]
+    extra_hosts: ["host.docker.internal:host-gateway"]
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./data:/home/node/.n8n-files
+volumes:
+  neo4j_data:
+  n8n_data:

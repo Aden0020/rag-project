@@ -1,0 +1,5 @@
+{
+ "vector_search": "Finds players from a description of playing style, e.g. 'creative playmaker'. Input: query (natural language, preferably English). Use when the user describes a type of player without naming one. Returns player text, source document and similarity score.",
+ "graph_lookup": "Finds players connected to a named player via clubs (current or previous). Input: playerName (exact full name). Use for questions about teammates, clubs or connections of a known player. Returns connected players, clubs and relation types.",
+ "hybrid_search": "Combines semantic search and club connections in one Neo4j query. Input: query (natural language, preferably English). Use when the question describes a player type AND asks about connections. Returns matching players with description, source, score and connected players."
+}

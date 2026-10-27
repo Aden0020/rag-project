@@ -1,0 +1,139 @@
+{
+  "name": "Tool - hybrid_search",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "jsonExample",
+        "jsonExample": "{\"query\": \"creative playmaker\"}"
+      },
+      "id": "execute-workflow-trigger",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:11434/api/embed",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { model: 'nomic-embed-text', input: $json.query } }}"
+      },
+      "id": "embed-query",
+      "name": "Embed query",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        220,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const body = { statements: [{ statement: `\nCALL db.index.vector.queryNodes('playerChunks', 2, $embedding)\nYIELD node AS chunk, score\nMATCH (chunk)-[:DESCRIBES]->(p:Player)\nMATCH (chunk)-[:FROM_DOCUMENT]->(d:Document)\nOPTIONAL MATCH (p)-[r1:PLAYS_FOR|PREVIOUSLY_PLAYED_FOR]->(c:Club)\n               <-[r2:PLAYS_FOR|PREVIOUSLY_PLAYED_FOR]-(o:Player)\nWHERE o <> p\nRETURN p.name AS player, chunk.text AS description, d.name AS source, score,\n       collect(DISTINCT {player: o.name, club: c.name, playerRelation: type(r1), otherRelation: type(r2)}) AS connections`,\n parameters: { embedding: $json.embeddings[0] } }] };\nreturn { json: { body } };"
+      },
+      "id": "build-cypher",
+      "name": "Build Cypher",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://neo4j:7474/db/neo4j/tx/commit",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.body }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Basic bmVvNGo6cGFzc3dvcmQxMjM="
+            }
+          ]
+        }
+      },
+      "id": "query-neo4j",
+      "name": "Query Neo4j",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        660,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const res = $json.results ? $json.results[0] : null;\nif (!res) { throw new Error('Neo4j error: ' + JSON.stringify($json.errors)); }\nconst rows = res.data.map(d => Object.fromEntries(res.columns.map((c, i) => [c, d.row[i]])));\nreturn { json: { result: JSON.stringify(rows, null, 2) } };"
+      },
+      "id": "format-result",
+      "name": "Format result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Embed query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embed query": {
+      "main": [
+        [
+          {
+            "node": "Build Cypher",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Cypher": {
+      "main": [
+        [
+          {
+            "node": "Query Neo4j",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Neo4j": {
+      "main": [
+        [
+          {
+            "node": "Format result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

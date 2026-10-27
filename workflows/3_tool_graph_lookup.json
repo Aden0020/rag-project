@@ -1,0 +1,111 @@
+{
+  "name": "Tool - graph_lookup",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "jsonExample",
+        "jsonExample": "{\"playerName\": \"Rafael Duarte\"}"
+      },
+      "id": "execute-workflow-trigger",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const body = { statements: [{ statement: `\nMATCH (p:Player {name: $playerName})-[r1:PLAYS_FOR|PREVIOUSLY_PLAYED_FOR]->(c:Club)\n      <-[r2:PLAYS_FOR|PREVIOUSLY_PLAYED_FOR]-(o:Player)\nWHERE o <> p\nRETURN o.name AS connectedPlayer, o.position AS position, c.name AS club,\n       type(r1) AS playerRelation, type(r2) AS otherRelation`,\n parameters: { playerName: $json.playerName } }] };\nreturn { json: { body } };"
+      },
+      "id": "build-cypher",
+      "name": "Build Cypher",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://neo4j:7474/db/neo4j/tx/commit",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.body }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Basic bmVvNGo6cGFzc3dvcmQxMjM="
+            }
+          ]
+        }
+      },
+      "id": "query-neo4j",
+      "name": "Query Neo4j",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const res = $json.results ? $json.results[0] : null;\nif (!res) { throw new Error('Neo4j error: ' + JSON.stringify($json.errors)); }\nconst rows = res.data.map(d => Object.fromEntries(res.columns.map((c, i) => [c, d.row[i]])));\nreturn { json: { result: JSON.stringify(rows, null, 2) } };"
+      },
+      "id": "format-result",
+      "name": "Format result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Build Cypher",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Cypher": {
+      "main": [
+        [
+          {
+            "node": "Query Neo4j",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Neo4j": {
+      "main": [
+        [
+          {
+            "node": "Format result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

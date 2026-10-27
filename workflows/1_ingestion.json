@@ -1,0 +1,188 @@
+{
+  "name": "Ingestion - players into Neo4j (graph + vector)",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual-trigger",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "fileSelector": "/home/node/.n8n-files/players.json",
+        "options": {}
+      },
+      "id": "read-players.json",
+      "name": "Read players.json",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        220,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "fromJson",
+        "destinationKey": "data",
+        "options": {}
+      },
+      "id": "extract-from-file",
+      "name": "Extract from File",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        440,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "data",
+        "options": {}
+      },
+      "id": "split-out",
+      "name": "Split Out",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        660,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:11434/api/embed",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { model: 'nomic-embed-text', input: $json.name + ' (' + $json.position + '): ' + $json.text } }}"
+      },
+      "id": "embed",
+      "name": "Embed",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        880,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const player = $('Split Out').item.json;\nconst embedding = $json.embeddings[0];\nconst cypher = `\nMERGE (d:Document {name: 'players.json'})\nMERGE (p:Player {name: $name})\nSET p.position = $position\nMERGE (c:Club {name: $club})\nMERGE (prev:Club {name: $previousClub})\nMERGE (p)-[:PLAYS_FOR]->(c)\nMERGE (p)-[:PREVIOUSLY_PLAYED_FOR]->(prev)\nMERGE (ch:Chunk {id: $chunkId})\nSET ch.text = $text, ch.embedding = $embedding\nMERGE (ch)-[:DESCRIBES]->(p)\nMERGE (ch)-[:FROM_DOCUMENT]->(d)`;\nreturn { json: { body: { statements: [{ statement: cypher, parameters: {\n  name: player.name, position: player.position, club: player.club,\n  previousClub: player.previousClub, chunkId: 'players.json-' + player.name,\n  text: player.name + ' (' + player.position + '): ' + player.text, embedding } }] } } };"
+      },
+      "id": "build-cypher",
+      "name": "Build Cypher",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://neo4j:7474/db/neo4j/tx/commit",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.body }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Basic bmVvNGo6cGFzc3dvcmQxMjM="
+            }
+          ]
+        }
+      },
+      "id": "write-to-neo4j",
+      "name": "Write to Neo4j",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1320,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Read players.json",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read players.json": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "Embed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embed": {
+      "main": [
+        [
+          {
+            "node": "Build Cypher",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Cypher": {
+      "main": [
+        [
+          {
+            "node": "Write to Neo4j",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
